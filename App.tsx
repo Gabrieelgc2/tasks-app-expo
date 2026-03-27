@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Platform, StatusBar as RNStatusBar } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Image, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import Task from './src/components/Task';
 import { addTask, deleteTask, getAllTasks, updateTask, TaskItem } from './src/utils/handle-api';
@@ -23,13 +23,17 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
+      <Image
+        style={styles.tinyLogo}
+        source={require('../tasks-app-expo/tasks/images/image.png')}
+      />
         <Text style={styles.header}>Tarefas</Text>
-
         <View style={styles.top}>
           <TextInput
             style={styles.input}
-            placeholder="Adicione uma tarefa..."
+            placeholder="Adicione uma tarefa"
             value={text}
+            maxLength={10}
             onChangeText={(val) => setText(val)}
           />
 
@@ -57,6 +61,7 @@ export default function App() {
             />
           ))}
         </ScrollView>
+        
       </View>
       <StatusBar style="auto" />
     </SafeAreaView>
@@ -75,6 +80,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
     paddingHorizontal: 16,
+    gap: 10
   },
   header: {
     marginTop: 16,
@@ -85,7 +91,7 @@ const styles = StyleSheet.create({
   top: {
     marginTop: 16,
     flexDirection: 'row',
-    gap: 16,
+    gap: 50,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -95,9 +101,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#000',
-    fontSize: 16,
+    borderBottomRightRadius: 500,
+    fontSize: 10,
+    fontWeight: `bold`,
+    width: 40,
   },
   addButton: {
+    flex: 0.3,
     backgroundColor: '#000',
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -108,7 +118,7 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 10,
   },
   list: {
     marginTop: 16,
@@ -116,5 +126,9 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 24,
-  }
+  },
+  tinyLogo: {
+    width: 50,
+    height: 50,
+  },
 });
