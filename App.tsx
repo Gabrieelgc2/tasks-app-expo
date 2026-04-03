@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Image, Platform, StatusBar as RNStatusBar } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, Platform, StatusBar as RNStatusBar, Image, Pressable, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import Task from './src/components/Task';
+import TaskList from './src/components/TaskList';
 import { addTask, deleteTask, getAllTasks, updateTask, TaskItem } from './src/utils/handle-api';
 
 export default function App() {
@@ -9,9 +9,10 @@ export default function App() {
   const [text, setText] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [taskId, setTaskId] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getAllTasks(setTasks);
+    getAllTasks(setTasks, setLoading);
   }, []);
 
   const updateMode = (_id: string, text: string) => {
@@ -23,17 +24,24 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-      <Image
-        style={styles.tinyLogo}
-        source={require('../tasks-app-expo/tasks/images/image.png')}
-      />
-        <Text style={styles.header}>Tarefas</Text>
+        <View style={styles.headerContainer}>
+          <Image
+            source={require('./assets/task-app-banner.png')}
+            style={styles.logo}
+          />
+          <Text style={styles.header}>Tarefas</Text>
+        </View>
+
+        <View style={styles.counterContainer}>
+          <Text style={styles.counterText}>Total de Tarefas: {tasks.length}</Text>
+        </View>
+
         <View style={styles.top}>
           <TextInput
             style={styles.input}
-            placeholder="Adicione uma tarefa"
+            placeholder="Adicione uma tarefa..."
             value={text}
-            maxLength={10}
+            maxLength={50}
             onChangeText={(val) => setText(val)}
           />
 
@@ -51,17 +59,29 @@ export default function App() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-          {tasks.map((item) => (
-            <Task
-              key={item._id}
-              text={item.text}
-              updateMode={() => updateMode(item._id, item.text)}
-              deleteToDo={() => deleteTask(item._id, setTasks)}
-            />
-          ))}
-        </ScrollView>
-        
+        <View style={styles.nativeButtonContainer}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.deleteButton,
+              pressed && styles.deleteButtonPressed
+            ]}
+            onPress={() => setTasks([])}
+          >
+            <Text style={styles.deleteButtonText}>Excluir todas as tarefas</Text>
+          </Pressable>
+        </View>
+
+        <TaskList
+          tasks={tasks}
+          onUpdate={updateMode}
+          onDelete={(id) => deleteTask(id, setTasks)}
+        />
+
+        {loading && (
+          <View style={styles.loaderContainer}>
+            <ActivityIndicator size="large" color="#000" />
+          </View>
+        )}
       </View>
       <StatusBar style="auto" />
     </SafeAreaView>
@@ -80,18 +100,35 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
     paddingHorizontal: 16,
-    gap: 10
+  },
+  headerContainer: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  logo: {
+    width: 60,
+    height: 60,
+    marginBottom: 8,
   },
   header: {
-    marginTop: 16,
     textAlign: 'center',
     fontSize: 24,
     fontWeight: 'bold',
   },
+  counterContainer: {
+    marginTop: 8,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  counterText: {
+    fontSize: 16,
+    color: '#666',
+  },
   top: {
     marginTop: 16,
     flexDirection: 'row',
-    gap: 50,
+    gap: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -101,14 +138,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#000',
-    borderBottomRightRadius: 500,
-    fontSize: 10,
-    fontWeight: `bold`,
-    width: 40,
-    color: `#fff`,
+    fontSize: 16,
   },
   addButton: {
-    flex: 0.3,
     backgroundColor: '#000',
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -119,17 +151,45 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 10,
+    fontSize: 16,
   },
-  list: {
+  nativeButtonContainer: {
     marginTop: 16,
-    flex: 1,
   },
-  listContent: {
-    paddingBottom: 24,
+  deleteButton: {
+    backgroundColor: '#ff4d4d',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#ff0000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
-  tinyLogo: {
-    width: 50,
-    height: 50,
+  deleteButtonPressed: {
+    backgroundColor: '#d9363e',
+    transform: [{ scale: 0.98 }],
+    elevation: 1,
+    shadowOpacity: 0.1,
   },
+  deleteButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+    letterSpacing: 0.5,
+  },
+  loaderContainer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    zIndex: 10,
+  }
 });
