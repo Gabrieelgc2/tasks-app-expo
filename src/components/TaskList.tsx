@@ -5,23 +5,36 @@ import { TaskItem as TaskItemType } from "../utils/handle-api";
 
 interface TaskListProps {
   tasks: TaskItemType[];
-  onUpdate: (id: string, text: string) => void;
+  onUpdate: (id: string, text: string, completed?: boolean, dueDate?: string) => void;
   onDelete: (id: string) => void;
 }
 
 export function TaskList({ tasks, onUpdate, onDelete }: TaskListProps) {
+
+  
+  const validTasks = Array.isArray(tasks) 
+    ? tasks.filter((item: TaskItemType) => item && item._id && item.text)
+    : [];
+
   return (
     <FlatList
       style={styles.list}
       contentContainerStyle={styles.listContent}
-      data={tasks}
-      keyExtractor={(item) => item._id}
+      data={validTasks}
+      keyExtractor={(item: TaskItemType, index) => item._id ? item._id.toString() : index.toString()}
       renderItem={({ item }) => (
         <TaskItem
           text={item.text}
-          updateMode={() => onUpdate(item._id, item.text)}
+          completed={item.completed}
+          dueDate={item.dueDate}
+          updateMode={() => onUpdate(item._id, item.text, item.completed, item.dueDate)}
           deleteToDo={() => onDelete(item._id)}
         />
+      )}
+      ListEmptyComponent={() => (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>Nenhuma tarefa encontrada.</Text>
+        </View>
       )}
     />
   );
@@ -36,7 +49,7 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   emptyContainer: {
-    marginTop: 16,
+    marginTop: 40,
     alignItems: "center",
   },
   emptyText: {

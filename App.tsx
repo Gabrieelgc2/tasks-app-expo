@@ -1,195 +1,261 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, Platform, StatusBar as RNStatusBar, Image, Pressable, ActivityIndicator } from 'react-native';
+import {
+  StyleSheet, Text, View, TextInput, SafeAreaView, Platform,
+  StatusBar as RNStatusBar, Pressable, ActivityIndicator, Modal
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import Checkbox from 'expo-checkbox';
+import DateTimePicker from '@react-native-community/datetimepicker';
+
 import TaskList from './src/components/TaskList';
 import { addTask, deleteTask, getAllTasks, updateTask, TaskItem } from './src/utils/handle-api';
 
 export default function App() {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [modalVisible, setModalVisible] = useState(false);
   const [text, setText] = useState("");
+  const [completed, setCompleted] = useState(false);
+  const [dueDate, setDueDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
   const [isUpdating, setIsUpdating] = useState(false);
   const [taskId, setTaskId] = useState("");
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     getAllTasks(setTasks, setLoading);
   }, []);
 
-  const updateMode = (_id: string, text: string) => {
-    setIsUpdating(true);
-    setText(text);
-    setTaskId(_id);
+  const openAddModal = () => {
+    setIsUpdating(false);
+    setText("");
+    setCompleted(false);
+    setDueDate(new Date());
+    setModalVisible(true);
   };
+
+const updateMode = (_id: string, taskText: string, isCompleted?: boolean, date?: string) => {
+  setIsUpdating(true);
+  setTaskId(_id);
+  setText(taskText);
+  setCompleted(isCompleted || false);
+
+  
+  if (date) {
+    setDueDate(new Date(date));
+  } else {
+    setDueDate(new Date()); 
+  }
+  
+  setModalVisible(true);
+};
+
+  const handleSave = () => {
+
+    console.log("Botão Salvar clicado! Texto:", text)
+    if (text.trim().length < 3) {
+      return;
+    }
+
+    const onSuccess = () => {
+      setModalVisible(false);
+      setText("");
+      setCompleted(false);
+      setIsUpdating(false);
+    };
+
+    if (isUpdating) {
+      updateTask(taskId, text, completed, dueDate.toISOString(), setTasks, onSuccess);
+    } else {
+      addTask(text, completed, dueDate.toISOString(), setTasks, onSuccess);
+    }
+  }; 
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.headerContainer}>
-          <Image
-            source={require('./assets/task-app-banner.png')}
-            style={styles.logo}
-          />
-          <Text style={styles.header}>Tarefas</Text>
+          <Text style={styles.header}>Minhas Tarefas</Text>
         </View>
 
-        <View style={styles.counterContainer}>
-          <Text style={styles.counterText}>Total de Tarefas: {tasks.length}</Text>
-        </View>
-
-        <View style={styles.top}>
-          <TextInput
-            style={styles.input}
-            placeholder="Adicione uma tarefa..."
-            value={text}
-            maxLength={50}
-            onChangeText={(val) => setText(val)}
-          />
-
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={
-              isUpdating
-                ? () => updateTask(taskId, text, setTasks, setText, setIsUpdating)
-                : () => addTask(text, setText, setTasks)
-            }
-          >
-            <Text style={styles.addButtonText}>
-              {isUpdating ? "Atualizar" : "Adicionar"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.nativeButtonContainer}>
+        <View style={styles.actionRow}>
           <Pressable
-            style={({ pressed }) => [
-              styles.deleteButton,
-              pressed && styles.deleteButtonPressed
-            ]}
+            style={({ pressed }) => [styles.mainButton, pressed && styles.buttonPressed]}
+            onPress={openAddModal}
+          >
+            <Text style={styles.buttonText}>+ Nova Tarefa</Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [styles.deleteButton, pressed && styles.buttonPressed]}
             onPress={() => setTasks([])}
           >
-            <Text style={styles.deleteButtonText}>Excluir todas as tarefas</Text>
+            <Text style={styles.buttonText}>Limpar Tudo</Text>
           </Pressable>
         </View>
 
-        <TaskList
-          tasks={tasks}
-          onUpdate={updateMode}
-          onDelete={(id) => deleteTask(id, setTasks)}
-        />
+        <TaskList tasks={tasks} onUpdate={updateMode} onDelete={(id) => deleteTask(id, setTasks)} />
 
-        {loading && (
-          <View style={styles.loaderContainer}>
-            <ActivityIndicator size="large" color="#000" />
+        <Modal animationType="fade" transparent={true} visible={modalVisible}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>{isUpdating ? "Editar Tarefa" : "Nova Tarefa"}</Text>
+
+              <TextInput
+                style={styles.input}
+                placeholder="O que precisa ser feito?"
+                value={text}
+                onChangeText={(val) => setText(val)}
+              />
+
+              <View style={styles.formRow}>
+                <Text>Concluída:</Text>
+                <Checkbox value={completed} onValueChange={setCompleted} color="#000" />
+              </View>
+
+              <View style={styles.formRow}>
+                <Text>Data Limite:</Text>
+                <Pressable onPress={() => setShowDatePicker(true)} style={styles.datePickerTrigger}>
+                  <Text>{dueDate.toLocaleDateString('pt-BR')}</Text>
+                </Pressable>
+              </View>
+
+              {showDatePicker && (
+                <DateTimePicker
+                  value={dueDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={(event, date) => {
+                    setShowDatePicker(false);
+                    if (date) setDueDate(date);
+                  }}
+                />
+              )}
+
+              <View style={styles.modalButtons}>
+                <Pressable onPress={() => setModalVisible(false)} style={styles.btnCancel}>
+                  <Text>Cancelar</Text>
+                </Pressable>
+                <Pressable onPress={handleSave} style={styles.btnSave}>
+                  <Text style={styles.buttonText}>Salvar</Text>
+                </Pressable>
+              </View>
+            </View>
           </View>
-        )}
+        </Modal>
+
+        {loading && <ActivityIndicator size="large" color="#000" style={{ marginTop: 20 }} />}
       </View>
-      <StatusBar style="auto" />
+      <StatusBar style="dark" />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#fff',
-    paddingTop: Platform.OS === 'android' ? RNStatusBar.currentHeight : 0,
+
+  safeArea: { flex: 1, 
+    backgroundColor: '#FFF', 
+    paddingTop: Platform.OS === 'android' ? RNStatusBar.currentHeight : 0 
   },
-  container: {
-    flex: 1,
-    maxWidth: 600,
-    width: '100%',
-    alignSelf: 'center',
-    paddingHorizontal: 16,
+
+  container: { flex: 1,
+     paddingHorizontal: 20
+     },
+
+  headerContainer: { alignItems: 'center',
+     marginVertical: 20 
+    },
+
+  header: { 
+    fontSize: 24, 
+    fontWeight: 'bold' 
   },
-  headerContainer: {
-    alignItems: 'center',
-    marginTop: 16,
+
+  actionRow: { flexDirection: 'row',
+     gap: 10, 
+     marginBottom: 10 
+    },
+
+  mainButton: { flex: 2, 
+    backgroundColor: '#000', 
+    padding: 15, 
+    borderRadius: 10, 
+    alignItems: 'center' 
   },
-  logo: {
-    width: 60,
-    height: 60,
-    marginBottom: 8,
+
+  deleteButton: { 
+    flex: 1, 
+    backgroundColor: '#FF5252', 
+    padding: 15, 
+    borderRadius: 10, 
+    alignItems: 'center' 
   },
-  header: {
-    textAlign: 'center',
-    fontSize: 24,
+  
+  buttonPressed: { 
+    transform: [{ scale: 0.97 }],
+   opacity: 0.8 
+  },
+
+  buttonText: { 
+    color: '#FFF', 
+    fontWeight: 'bold' 
+  },
+
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.5)', 
+    justifyContent: 'center', 
+    alignItems: 'center'
+   },
+
+  modalContent: { 
+    width: '85%',
+     backgroundColor: '#FFF', 
+     borderRadius: 15,
+     padding: 20 
+    },
+
+  modalTitle: { 
+    fontSize: 18,
     fontWeight: 'bold',
-  },
-  counterContainer: {
-    marginTop: 8,
+    marginBottom: 15
+     },
+
+  input: { 
+    borderWidth: 1, 
+    borderColor: '#DDD',
+    borderRadius: 8, 
+    padding: 12,
+    marginBottom: 15 
+    },
+
+  formRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+     marginBottom: 15 
+    },
+
+  datePickerTrigger: { 
+    padding: 10,
+     backgroundColor: '#EEE', 
+     borderRadius: 5 },
+
+  modalButtons: { 
     flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  counterText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  top: {
-    marginTop: 16,
-    flexDirection: 'row',
-    gap: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  input: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#000',
-    fontSize: 16,
-  },
-  addButton: {
-    backgroundColor: '#000',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  nativeButtonContainer: {
-    marginTop: 16,
-  },
-  deleteButton: {
-    backgroundColor: '#ff4d4d',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#ff0000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  deleteButtonPressed: {
-    backgroundColor: '#d9363e',
-    transform: [{ scale: 0.98 }],
-    elevation: 1,
-    shadowOpacity: 0.1,
-  },
-  deleteButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-    letterSpacing: 0.5,
-  },
-  loaderContainer: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    zIndex: 10,
+     justifyContent: 'flex-end',
+      gap: 10, 
+      marginTop: 10 },
+
+  btnCancel: { 
+    padding: 12
+   },
+  btnSave: 
+  { 
+    backgroundColor: '#000', 
+    paddingVertical: 12, 
+    paddingHorizontal: 20,
+    borderRadius: 8 
   }
 });
